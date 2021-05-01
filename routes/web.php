@@ -15,7 +15,9 @@ use App\Http\Controllers\EmployeeController;
 */
 
 Route::get('/', function () {
-    return view('welcome');
+    $lead = json_decode(Storage::disk('local')->get('data.json')); 
+    return view('welcome',compact('lead'));
 });
+Route::post('employees', 'EmployeeController@add');
 
 Route::resource('employees', EmployeeController::class);

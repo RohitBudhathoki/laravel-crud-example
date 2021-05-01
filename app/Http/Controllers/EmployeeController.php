@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use App\Models\Employee;
+use Illuminate\Support\Facades\Storage;
 
 
 class EmployeeController extends Controller
@@ -25,7 +26,8 @@ class EmployeeController extends Controller
      */
     public function create()
     {
-        return view('welcome');
+        $leads = json_decode(Storage::disk('local')->get('data.json')); 
+         return view('welcome')->with('leads',$lead);
     }
 
     /**
@@ -34,18 +36,31 @@ class EmployeeController extends Controller
      * @param  \Illuminate\Http\Request  $request
      * @return \Illuminate\Http\Response
      */
-    public function store(Request $request)
-    {
-        $storeData = $request->validate([
-            'name' => 'required|max:255',
-            'email' => 'required|max:255',
-            'phone' => 'required|numeric',
-        ]);
-        $employee = Employee::create($storeData);
+   
+    public function store(Request $request) {
+ 
+        try {
+            
 
-        return redirect('/employees')->with('completed', 'Employee created!');
+            // my data storage location is project_root/storage/app/data.json file.
+            $contactInfo = Storage::disk('local')->exists('data.json') ? json_decode(Storage::disk('local')->get('data.json')) : [];
+        
+            $inputData = $request->only(['id','name', 'email', 'phone']);
+           
+            $inputData['datetime_submitted'] = date('Y-m-d H:i:s');
+ 
+            array_push($contactInfo,$inputData);
+    
+            Storage::disk('local')->put('data.json', json_encode($contactInfo));
+ 
+            return redirect('/')->with('completed', 'Employee created!');
+ 
+        } catch(Exception $e) {
+ 
+            return ['error' => true, 'message' => $e->getMessage()];
+ 
+        }
     }
-
     /**
      * Display the specified resource.
      *
@@ -65,8 +80,9 @@ class EmployeeController extends Controller
      */
     public function edit($id)
     {
-        $employee = Employee::findOrFail($id);
-        return view('update', compact('employee'));
+        $employee = json_decode(Storage::disk('local')->get('data.json'));
+        $employee = $employee[$id];
+        return view('update')->with('employee',$employee);
     }
 
     /**
@@ -83,8 +99,16 @@ class EmployeeController extends Controller
             'email' => 'required|max:255',
             'phone' => 'required|numeric',
         ]);
-
-        Employee::whereId($id)->update($data);
+        $inputs = $request->all();
+        $addr = ($request->name);
+        $phone = ($request->phone);
+        $email = ($request->email);
+        $final_address = array();
+        foreach ($addr as $key => $value) {
+            $final_address[] = array('address' => $value, 'country'=>$country[$key] );
+        }
+        $inputs['address'] = json_encode($final_address);        
+        $book->update($inputs);
         return redirect('/employees')->with('completed', 'Employee updated');
     }
 
@@ -96,6 +120,8 @@ class EmployeeController extends Controller
      */
     public function destroy($id)
     {
+        
+
         $employee = Employee::findOrFail($id);
         $employee->delete();
 
